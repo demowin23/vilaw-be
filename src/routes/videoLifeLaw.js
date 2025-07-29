@@ -83,6 +83,8 @@ const {
   getPopularHashtags,
   approveVideoLifeLaw,
   getPendingVideoLifeLaw,
+  getMostViewedVideos,
+  getMostLikedVideos,
 } = require("../controllers/videoLifeLawController");
 
 // Public routes (không cần authentication)
@@ -90,6 +92,8 @@ router.get("/", getVideoLifeLaw);
 router.get("/types", getVideoTypes);
 router.get("/age-groups", getAgeGroups);
 router.get("/hashtags/popular", getPopularHashtags);
+router.get("/most-viewed", getMostViewedVideos);
+router.get("/most-liked", getMostLikedVideos);
 router.get("/:id", getVideoLifeLawById);
 router.get("/:id/comments", getVideoComments);
 

@@ -1112,6 +1112,122 @@ const getPendingVideoLifeLaw = async (req, res) => {
   }
 };
 
+// Lấy video xem nhiều nhất
+const getMostViewedVideos = async (req, res) => {
+  try {
+    const { limit = 10, type, age_group, hashtag, is_featured } = req.query;
+
+    let query = `
+      SELECT v.*, u.full_name as creator_name
+      FROM video_life_law v
+      LEFT JOIN users u ON v.created_by = u.id
+      WHERE v.is_active = true AND v.is_approved = true
+    `;
+
+    const queryParams = [];
+    let paramIndex = 1;
+
+    if (type) {
+      query += ` AND v.type = $${paramIndex}`;
+      queryParams.push(type);
+      paramIndex++;
+    }
+
+    if (age_group) {
+      query += ` AND v.age_group = $${paramIndex}`;
+      queryParams.push(age_group);
+      paramIndex++;
+    }
+
+    if (hashtag) {
+      query += ` AND $${paramIndex} = ANY(v.hashtags)`;
+      queryParams.push(hashtag);
+      paramIndex++;
+    }
+
+    if (is_featured === "true") {
+      query += ` AND v.is_featured = true`;
+    }
+
+    // Sắp xếp theo view_count giảm dần (xem nhiều nhất trước)
+    query += ` ORDER BY v.view_count DESC LIMIT $${paramIndex}`;
+    queryParams.push(limit);
+
+    const result = await pool.query(query, queryParams);
+
+    res.json({
+      success: true,
+      message: "Lấy video xem nhiều nhất thành công",
+      data: result.rows,
+      count: result.rows.length,
+    });
+  } catch (error) {
+    console.error("Error getting most viewed videos:", error);
+    res.status(500).json({
+      success: false,
+      error: "Lỗi khi lấy video xem nhiều nhất",
+    });
+  }
+};
+
+// Lấy video thích nhiều nhất
+const getMostLikedVideos = async (req, res) => {
+  try {
+    const { limit = 10, type, age_group, hashtag, is_featured } = req.query;
+
+    let query = `
+      SELECT v.*, u.full_name as creator_name
+      FROM video_life_law v
+      LEFT JOIN users u ON v.created_by = u.id
+      WHERE v.is_active = true AND v.is_approved = true
+    `;
+
+    const queryParams = [];
+    let paramIndex = 1;
+
+    if (type) {
+      query += ` AND v.type = $${paramIndex}`;
+      queryParams.push(type);
+      paramIndex++;
+    }
+
+    if (age_group) {
+      query += ` AND v.age_group = $${paramIndex}`;
+      queryParams.push(age_group);
+      paramIndex++;
+    }
+
+    if (hashtag) {
+      query += ` AND $${paramIndex} = ANY(v.hashtags)`;
+      queryParams.push(hashtag);
+      paramIndex++;
+    }
+
+    if (is_featured === "true") {
+      query += ` AND v.is_featured = true`;
+    }
+
+    // Sắp xếp theo like_count giảm dần (thích nhiều nhất trước)
+    query += ` ORDER BY v.like_count DESC LIMIT $${paramIndex}`;
+    queryParams.push(limit);
+
+    const result = await pool.query(query, queryParams);
+
+    res.json({
+      success: true,
+      message: "Lấy video thích nhiều nhất thành công",
+      data: result.rows,
+      count: result.rows.length,
+    });
+  } catch (error) {
+    console.error("Error getting most liked videos:", error);
+    res.status(500).json({
+      success: false,
+      error: "Lỗi khi lấy video thích nhiều nhất",
+    });
+  }
+};
+
 module.exports = {
   getVideoLifeLaw,
   getVideoLifeLawById,
@@ -1128,4 +1244,6 @@ module.exports = {
   getPopularHashtags,
   approveVideoLifeLaw,
   getPendingVideoLifeLaw,
+  getMostViewedVideos,
+  getMostLikedVideos,
 };
