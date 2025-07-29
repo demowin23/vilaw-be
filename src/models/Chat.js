@@ -10,8 +10,8 @@ class Chat {
           c.title,
           c.created_at,
           c.updated_at,
-          c.status,
-          c.user_id,
+          c.type,
+          c.created_by,
           u.full_name as user_name,
           u.avatar as user_avatar,
           u.role as user_role,
@@ -20,7 +20,7 @@ class Chat {
             FROM chat_messages cm 
             WHERE cm.conversation_id = c.id 
             AND cm.is_read = false 
-            AND cm.sender_id != $1
+            AND cm.user_id != $1
           ) as unread_count,
           (
             SELECT cm.content 
@@ -29,23 +29,23 @@ class Chat {
             ORDER BY cm.created_at DESC 
             LIMIT 1
           ) as last_message
-        FROM conversations c
-        LEFT JOIN users u ON c.user_id = u.id
-        WHERE c.status = 'active'
+        FROM chats c
+        LEFT JOIN users u ON c.created_by = u.id
+        WHERE c.type = 'private'
       `;
 
       const params = [userId];
 
       // Nếu là user thường, chỉ xem cuộc trò chuyện của mình
       if (userRole === "user") {
-        query += ` AND c.user_id = $1`;
+        query += ` AND c.created_by = $1`;
       }
       // Nếu là lawyer hoặc admin, xem tất cả cuộc trò chuyện
       else if (userRole === "lawyer" || userRole === "admin") {
-        query += ` AND (c.user_id = $1 OR c.lawyer_id IS NULL)`;
+        query += ` AND c.created_by = $1`;
       }
 
-      query += ` ORDER BY c.updated_at DESC`;
+      query += ` ORDER BY c.created_at DESC`;
 
       const result = await pool.query(query, params);
       return result.rows;
@@ -59,13 +59,30 @@ class Chat {
     try {
       // Kiểm tra quyền truy cập
       const checkQuery = `
-        SELECT * FROM conversations 
-        WHERE id = $1 AND status = 'active'
+        SELECT * FROM chats 
+        WHERE id = $1
       `;
       const checkResult = await pool.query(checkQuery, [conversationId]);
 
       if (checkResult.rows.length === 0) {
-        throw new Error("Không có quyền truy cập cuộc trò chuyện này");
+        throw new Error("Cuộc trò chuyện không tồn tại");
+      }
+
+      // Nếu userId là null (lawyer), bỏ qua kiểm tra participant
+      if (userId !== null) {
+        // Kiểm tra user có tham gia conversation không
+        const participantQuery = `
+          SELECT * FROM chat_participants 
+          WHERE conversation_id = $1 AND user_id = $2
+        `;
+        const participantResult = await pool.query(participantQuery, [
+          conversationId,
+          userId,
+        ]);
+
+        if (participantResult.rows.length === 0) {
+          throw new Error("Bạn không tham gia cuộc trò chuyện này");
+        }
       }
 
       const query = `
@@ -75,7 +92,7 @@ class Chat {
           u.avatar as sender_avatar,
           u.role as sender_role
         FROM chat_messages cm
-        LEFT JOIN users u ON cm.sender_id = u.id
+        LEFT JOIN users u ON cm.user_id = u.id
         WHERE cm.conversation_id = $1
         ORDER BY cm.created_at ASC
       `;
@@ -91,12 +108,26 @@ class Chat {
   static async createGeneralConversation(userId, title = null) {
     try {
       const query = `
-        INSERT INTO conversations (user_id, lawyer_id, title, status)
-        VALUES ($1, NULL, $2, 'active')
+        INSERT INTO chats (title, type, created_by)
+        VALUES ($1, 'private', $2)
         RETURNING *
       `;
 
-      const result = await pool.query(query, [userId, title]);
+      const result = await pool.query(query, [
+        title || "Tư vấn pháp luật",
+        userId,
+      ]);
+
+      // Tự động thêm user vào participants
+      await pool.query(
+        `
+        INSERT INTO chat_participants (conversation_id, user_id, role)
+        VALUES ($1, $2, 'participant')
+        ON CONFLICT DO NOTHING
+      `,
+        [result.rows[0].id, userId]
+      );
+
       return result.rows[0];
     } catch (error) {
       throw error;
@@ -107,12 +138,26 @@ class Chat {
   static async createConversation(userId, lawyerId, title = null) {
     try {
       const query = `
-        INSERT INTO conversations (user_id, lawyer_id, title, status)
-        VALUES ($1, $2, $3, 'active')
+        INSERT INTO chats (title, type, created_by)
+        VALUES ($1, 'private', $2)
         RETURNING *
       `;
 
-      const result = await pool.query(query, [userId, lawyerId, title]);
+      const result = await pool.query(query, [
+        title || "Tư vấn pháp luật",
+        userId,
+      ]);
+
+      // Tự động thêm user vào participants
+      await pool.query(
+        `
+        INSERT INTO chat_participants (conversation_id, user_id, role)
+        VALUES ($1, $2, 'participant')
+        ON CONFLICT DO NOTHING
+      `,
+        [result.rows[0].id, userId]
+      );
+
       return result.rows[0];
     } catch (error) {
       throw error;
@@ -129,7 +174,7 @@ class Chat {
   ) {
     try {
       const query = `
-        INSERT INTO chat_messages (conversation_id, sender_id, content, message_type, file_url)
+        INSERT INTO chat_messages (conversation_id, user_id, content, message_type, file_url)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING *
       `;
@@ -144,7 +189,7 @@ class Chat {
 
       // Cập nhật thời gian cuối của conversation
       await pool.query(
-        "UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+        "UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = $1",
         [conversationId]
       );
 
@@ -160,7 +205,7 @@ class Chat {
       const query = `
         UPDATE chat_messages 
         SET is_read = true 
-        WHERE conversation_id = $1 AND sender_id != $2 AND is_read = false
+        WHERE conversation_id = $1 AND user_id != $2 AND is_read = false
       `;
 
       await pool.query(query, [conversationId, userId]);

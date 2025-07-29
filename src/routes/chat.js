@@ -53,6 +53,8 @@ const {
   getAllConversations,
   getConversationMessages,
   getDetailedChatStats,
+  debugConversations,
+  addParticipant,
 } = require("../controllers/chatController");
 
 // Tất cả routes đều cần authentication
@@ -94,5 +96,11 @@ router.get("/stats", getChatStats);
 
 // Lấy thống kê chi tiết (Admin only)
 router.get("/detailed-stats", getDetailedChatStats);
+
+// Debug API
+router.get("/debug", debugConversations);
+
+// Thêm participant vào conversation
+router.post("/conversations/:conversationId/join", addParticipant);
 
 module.exports = router;

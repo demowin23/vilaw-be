@@ -26,7 +26,29 @@ const getConversations = async (req, res) => {
 const getMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const messages = await Chat.getMessages(conversationId, req.user.id);
+
+    // Kiểm tra conversation có tồn tại không
+    const checkQuery = `
+      SELECT id, title, type, created_by 
+      FROM chats 
+      WHERE id = $1
+    `;
+    const checkResult = await pool.query(checkQuery, [conversationId]);
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `Cuộc trò chuyện ID ${conversationId} không tồn tại`,
+      });
+    }
+
+    // Lawyer có thể xem tất cả messages, user chỉ xem messages của conversation họ tham gia
+    let messages;
+    if (req.user.role === "lawyer") {
+      messages = await Chat.getMessages(conversationId, null); // null để lấy tất cả
+    } else {
+      messages = await Chat.getMessages(conversationId, req.user.id);
+    }
 
     res.json({
       success: true,
@@ -48,8 +70,8 @@ const createConversation = async (req, res) => {
 
     // Kiểm tra xem user đã có cuộc trò chuyện chung chưa
     const existingQuery = `
-      SELECT id FROM conversations 
-      WHERE user_id = $1 AND lawyer_id IS NULL AND status = 'active'
+      SELECT id FROM chats 
+      WHERE created_by = $1 AND type = 'private'
     `;
     const existingResult = await pool.query(existingQuery, [req.user.id]);
 
@@ -96,42 +118,47 @@ const sendMessage = async (req, res) => {
 
     // Kiểm tra quyền truy cập cuộc trò chuyện
     const checkQuery = `
-      SELECT * FROM conversations 
-      WHERE id = $1 AND status = 'active'
+      SELECT * FROM chats 
+      WHERE id = $1
     `;
     const checkResult = await pool.query(checkQuery, [conversationId]);
 
     if (checkResult.rows.length === 0) {
-      return res.status(403).json({
+      return res.status(404).json({
         success: false,
-        error: "Không tìm thấy cuộc trò chuyện này",
+        error: "Cuộc trò chuyện không tồn tại",
       });
     }
 
     const conversation = checkResult.rows[0];
     const userId = req.user.id;
-    const userRole = req.user.role;
 
-    // Kiểm tra quyền gửi tin nhắn
-    // User chỉ có thể gửi tin nhắn trong cuộc trò chuyện của mình
-    // Lawyer có thể gửi tin nhắn trong bất kỳ cuộc trò chuyện nào
-    if (userRole === "user" && conversation.user_id !== userId) {
-      return res.status(403).json({
-        success: false,
-        error: "Không có quyền gửi tin nhắn trong cuộc trò chuyện này",
-      });
-    }
+    // Kiểm tra user có tham gia cuộc trò chuyện không
+    const participantQuery = `
+      SELECT * FROM chat_participants 
+      WHERE conversation_id = $1 AND user_id = $2
+    `;
+    const participantResult = await pool.query(participantQuery, [
+      conversationId,
+      userId,
+    ]);
 
-    // Lawyer và admin có thể gửi tin nhắn trong bất kỳ cuộc trò chuyện nào
-    if (
-      userRole !== "lawyer" &&
-      userRole !== "admin" &&
-      conversation.user_id !== userId
-    ) {
-      return res.status(403).json({
-        success: false,
-        error: "Không có quyền gửi tin nhắn trong cuộc trò chuyện này",
-      });
+    // Nếu user không tham gia và là lawyer, tự động thêm vào
+    if (participantResult.rows.length === 0) {
+      if (req.user.role === "lawyer") {
+        // Tự động thêm lawyer vào conversation
+        const addParticipantQuery = `
+          INSERT INTO chat_participants (conversation_id, user_id, joined_at)
+          VALUES ($1, $2, NOW())
+          ON CONFLICT (conversation_id, user_id) DO NOTHING
+        `;
+        await pool.query(addParticipantQuery, [conversationId, userId]);
+      } else {
+        return res.status(403).json({
+          success: false,
+          error: "Bạn không tham gia cuộc trò chuyện này",
+        });
+      }
     }
 
     let fileUrl = null;
@@ -265,7 +292,7 @@ const getAllConversations = async (req, res) => {
       });
     }
 
-    const { page = 1, limit = 20, status = "active" } = req.query;
+    const { page = 1, limit = 20, type = "private" } = req.query;
     const offset = (page - 1) * limit;
 
     const query = `
@@ -274,8 +301,8 @@ const getAllConversations = async (req, res) => {
         c.title,
         c.created_at,
         c.updated_at,
-        c.status,
-        c.user_id,
+        c.type,
+        c.created_by,
         u.full_name as user_name,
         u.avatar as user_avatar,
         u.phone as user_phone,
@@ -285,7 +312,7 @@ const getAllConversations = async (req, res) => {
           FROM chat_messages cm 
           WHERE cm.conversation_id = c.id 
           AND cm.is_read = false 
-          AND cm.sender_id != $1
+          AND cm.user_id != $1
         ) as unread_count,
         (
           SELECT cm.content 
@@ -299,22 +326,22 @@ const getAllConversations = async (req, res) => {
           FROM chat_messages cm 
           WHERE cm.conversation_id = c.id
         ) as total_messages
-      FROM conversations c
-      LEFT JOIN users u ON c.user_id = u.id
-      WHERE c.status = $2
+      FROM chats c
+      LEFT JOIN users u ON c.created_by = u.id
+      WHERE c.type = $2
       ORDER BY c.updated_at DESC
       LIMIT $3 OFFSET $4
     `;
 
     const countQuery = `
       SELECT COUNT(*) as total
-      FROM conversations c
-      WHERE c.status = $1
+      FROM chats c
+      WHERE c.type = $1
     `;
 
     const [result, countResult] = await Promise.all([
-      pool.query(query, [req.user.id, status, limit, offset]),
-      pool.query(countQuery, [status]),
+      pool.query(query, [req.user.id, type, limit, offset]),
+      pool.query(countQuery, [type]),
     ]);
 
     res.json({
@@ -352,8 +379,8 @@ const getConversationMessages = async (req, res) => {
     // Kiểm tra cuộc trò chuyện có tồn tại không
     const checkQuery = `
       SELECT c.*, u.full_name as user_name, u.phone as user_phone
-      FROM conversations c
-      LEFT JOIN users u ON c.user_id = u.id
+      FROM chats c
+      LEFT JOIN users u ON c.created_by = u.id
       WHERE c.id = $1
     `;
     const checkResult = await pool.query(checkQuery, [conversationId]);
@@ -376,7 +403,7 @@ const getConversationMessages = async (req, res) => {
         u.role as sender_role,
         u.phone as sender_phone
       FROM chat_messages cm
-      LEFT JOIN users u ON cm.sender_id = u.id
+      LEFT JOIN users u ON cm.user_id = u.id
       WHERE cm.conversation_id = $1
       ORDER BY cm.created_at ASC
     `;
@@ -445,7 +472,7 @@ const getDetailedChatStats = async (req, res) => {
       FROM conversations c
       LEFT JOIN users u ON c.user_id = u.id
       LEFT JOIN chat_messages cm ON c.id = cm.conversation_id
-      WHERE c.status = 'active'
+      WHERE c.type = 'private'
       GROUP BY c.id, c.title, u.full_name, u.phone
       ORDER BY last_message_time DESC
       LIMIT 10
@@ -472,6 +499,89 @@ const getDetailedChatStats = async (req, res) => {
   }
 };
 
+// Thêm participant vào conversation
+const addParticipant = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user.id;
+
+    // Kiểm tra conversation có tồn tại không
+    const checkQuery = `
+      SELECT id FROM chats WHERE id = $1
+    `;
+    const checkResult = await pool.query(checkQuery, [conversationId]);
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Cuộc trò chuyện không tồn tại",
+      });
+    }
+
+    // Thêm participant
+    await pool.query(
+      `
+      INSERT INTO chat_participants (conversation_id, user_id, role)
+      VALUES ($1, $2, 'participant')
+      ON CONFLICT DO NOTHING
+    `,
+      [conversationId, userId]
+    );
+
+    res.json({
+      success: true,
+      message: "Đã thêm vào cuộc trò chuyện",
+    });
+  } catch (error) {
+    console.error("Error adding participant:", error);
+    res.status(500).json({
+      success: false,
+      error: "Lỗi khi thêm participant",
+    });
+  }
+};
+
+// Debug API để kiểm tra conversations
+const debugConversations = async (req, res) => {
+  try {
+    // Kiểm tra bảng chats
+    const chatsResult = await pool.query(`
+      SELECT id, title, type, created_by, created_at 
+      FROM chats 
+      ORDER BY id
+    `);
+
+    // Kiểm tra bảng chat_messages
+    const messagesResult = await pool.query(`
+      SELECT id, conversation_id, user_id, content, created_at 
+      FROM chat_messages 
+      ORDER BY conversation_id, created_at
+    `);
+
+    // Kiểm tra bảng chat_participants
+    const participantsResult = await pool.query(`
+      SELECT conversation_id, user_id, role 
+      FROM chat_participants 
+      ORDER BY conversation_id
+    `);
+
+    res.json({
+      success: true,
+      data: {
+        chats: chatsResult.rows,
+        messages: messagesResult.rows,
+        participants: participantsResult.rows,
+      },
+    });
+  } catch (error) {
+    console.error("Error debugging conversations:", error);
+    res.status(500).json({
+      success: false,
+      error: "Lỗi khi debug conversations",
+    });
+  }
+};
+
 module.exports = {
   getConversations,
   getMessages,
@@ -484,4 +594,6 @@ module.exports = {
   getAllConversations,
   getConversationMessages,
   getDetailedChatStats,
+  debugConversations,
+  addParticipant,
 };
