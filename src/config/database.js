@@ -182,7 +182,7 @@ const initDatabase = async () => {
         issued_date DATE NOT NULL,
         effective_date DATE,
         expiry_date DATE,
-        status VARCHAR(50) NOT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'chua_xac_dinh',
         tags TEXT[],
         file_url VARCHAR(500),
         file_size INTEGER DEFAULT 0,

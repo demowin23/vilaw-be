@@ -24,7 +24,9 @@
     "check-tables": "node src/scripts/checkAndCreateTables.js",
     "create-video-tables": "node src/scripts/createVideoTables.js",
     "hard-delete": "node src/scripts/hardDeleteInactive.js",
-    "setup": "npm run check-tables && npm run create-admin",
+    "create-database": "node src/scripts/createDatabase.js",
+    "fix-status": "node src/scripts/fixLegalDocumentsStatus.js",
+    "setup": "npm run create-database && npm run check-tables && npm run create-admin",
     "docker:build": "docker build -t vilaw-be .",
     "docker:run": "docker run -p 4000:4000 vilaw-be"
   },

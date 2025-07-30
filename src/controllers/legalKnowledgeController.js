@@ -19,73 +19,102 @@ const getLegalKnowledge = async (req, res) => {
         u.full_name as created_by_name
       FROM legal_knowledge lk
       LEFT JOIN users u ON lk.created_by = u.id
-      WHERE lk.is_active = true
     `;
 
     // Thêm điều kiện lọc theo trạng thái approval
     const isPending = req.query.isPending;
     const isAdmin = req.user && req.user.role === "admin";
 
+    // Tạo điều kiện WHERE
+    let whereConditions = [];
+
     if (isPending === "true") {
       // Lấy trạng thái chờ duyệt (is_approved = false)
-      query += ` AND lk.is_approved = false`;
+      whereConditions.push(`lk.is_approved = false`);
     } else if (isPending === "false") {
       // Lấy trạng thái đã duyệt (is_approved = true)
-      query += ` AND lk.is_approved = true`;
-    } else if (isAdmin) {
-      // Admin mặc định có thể xem tất cả (cả đã duyệt và chờ duyệt)
-      query += ` AND (lk.is_approved = true OR lk.is_approved = false)`;
-    } else {
+      whereConditions.push(`lk.is_approved = true`);
+    } else if (!isAdmin) {
       // Người dùng thường chỉ xem đã duyệt
-      query += ` AND lk.is_approved = true`;
+      whereConditions.push(`lk.is_approved = true`);
     }
+    // Admin không truyền isPending: không thêm điều kiện lọc để lấy tất cả
 
     const params = [];
     let paramIndex = 1;
 
     if (category) {
-      query += ` AND lk.category = $${paramIndex}`;
+      whereConditions.push(`lk.category = $${paramIndex}`);
       params.push(category);
       paramIndex++;
     }
 
     if (status) {
-      query += ` AND lk.status = $${paramIndex}`;
+      whereConditions.push(`lk.status = $${paramIndex}`);
       params.push(status);
       paramIndex++;
     }
 
     if (is_featured === "true") {
-      query += ` AND lk.is_featured = true`;
+      whereConditions.push(`lk.is_featured = true`);
     }
 
     if (search) {
-      query += ` AND (lk.title ILIKE $${paramIndex} OR lk.summary ILIKE $${paramIndex})`;
+      whereConditions.push(
+        `(lk.title ILIKE $${paramIndex} OR lk.summary ILIKE $${paramIndex})`
+      );
       params.push(`%${search}%`);
       paramIndex++;
     }
 
+    // Thêm WHERE clause với tất cả điều kiện
+    if (whereConditions.length > 0) {
+      query += ` WHERE ${whereConditions.join(" AND ")}`;
+    }
+
     // Đếm tổng số bản ghi (không JOIN)
-    let countQuery = `SELECT COUNT(*) as count FROM legal_knowledge WHERE is_active = true`;
+    let countQuery = `SELECT COUNT(*) as count FROM legal_knowledge`;
     const countParams = [];
     let countParamIndex = 1;
+
+    // Tạo điều kiện WHERE cho count query
+    let countWhereConditions = [];
+
+    // Thêm logic lọc is_approved cho count query (giống query chính)
+    if (isPending === "true") {
+      countWhereConditions.push(`is_approved = false`);
+    } else if (isPending === "false") {
+      countWhereConditions.push(`is_approved = true`);
+    } else if (!isAdmin) {
+      // Người dùng thường chỉ xem đã duyệt
+      countWhereConditions.push(`is_approved = true`);
+    }
+    // Admin không truyền isPending: không thêm điều kiện lọc để lấy tất cả
+
     if (category) {
-      countQuery += ` AND category = $${countParamIndex}`;
+      countWhereConditions.push(`category = $${countParamIndex}`);
       countParams.push(category);
       countParamIndex++;
     }
     if (status) {
-      countQuery += ` AND status = $${countParamIndex}`;
+      countWhereConditions.push(`status = $${countParamIndex}`);
       countParams.push(status);
       countParamIndex++;
     }
     if (is_featured === "true") {
-      countQuery += ` AND is_featured = true`;
+      countWhereConditions.push(`is_featured = true`);
     }
     if (search) {
-      countQuery += ` AND (title ILIKE $${countParamIndex} OR summary ILIKE $${countParamIndex})`;
+      countWhereConditions.push(
+        `(title ILIKE $${countParamIndex} OR summary ILIKE $${countParamIndex})`
+      );
       countParams.push(`%${search}%`);
       countParamIndex++;
+    }
+
+    // Thêm WHERE clause cho count query nếu có điều kiện
+    if (countWhereConditions.length > 0) {
+      countQuery += ` WHERE ${countWhereConditions.join(" AND ")}`;
     }
     const countResult = await pool.query(countQuery, countParams);
     const total = parseInt(countResult.rows[0].count);

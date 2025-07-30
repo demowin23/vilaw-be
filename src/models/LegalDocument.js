@@ -302,11 +302,18 @@ class LegalDocument {
       is_approved = false,
     } = documentData;
 
+    // Tính toán status dựa trên ngày hiệu lực và hết hạn
+    const status = LegalDocument.calculateStatus(
+      issued_date,
+      effective_date,
+      expiry_date
+    );
+
     const query = `
       INSERT INTO legal_documents (
         title, document_number, document_type, issuing_authority,
-        issued_date, effective_date, expiry_date, tags, file_url, file_size, uploaded_by, is_important, is_approved
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        issued_date, effective_date, expiry_date, status, tags, file_url, file_size, uploaded_by, is_important, is_approved
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `;
 
@@ -318,6 +325,7 @@ class LegalDocument {
       issued_date,
       effective_date,
       expiry_date,
+      status,
       tags,
       file_url,
       file_size,
@@ -343,6 +351,31 @@ class LegalDocument {
         paramIndex++;
       }
     });
+
+    // Nếu có thay đổi về ngày tháng, tính toán lại status
+    if (
+      updateData.issued_date !== undefined ||
+      updateData.effective_date !== undefined ||
+      updateData.expiry_date !== undefined
+    ) {
+      // Lấy thông tin hiện tại của document
+      const currentDoc = await this.getById(id);
+      if (currentDoc) {
+        const newIssuedDate = updateData.issued_date || currentDoc.issued_date;
+        const newEffectiveDate =
+          updateData.effective_date || currentDoc.effective_date;
+        const newExpiryDate = updateData.expiry_date || currentDoc.expiry_date;
+
+        const newStatus = LegalDocument.calculateStatus(
+          newIssuedDate,
+          newEffectiveDate,
+          newExpiryDate
+        );
+        fields.push(`status = $${paramIndex}`);
+        values.push(newStatus);
+        paramIndex++;
+      }
+    }
 
     if (fields.length === 0) {
       return null;
