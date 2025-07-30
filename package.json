@@ -8,7 +8,7 @@
     "dev": "nodemon src/server.js",
     "build": "npm run clean && npm run copy-files",
     "clean": "rm -rf dist",
-    "copy-files": "cp -r src dist/src && cp package.json dist/ && cp yarn.lock dist/",
+    "copy-files": "mkdir -p dist && cp -r src dist/src && cp package.json dist/ && cp yarn.lock dist/",
     "prod": "NODE_ENV=production node dist/src/server.js",
     "build:prod": "npm run build && npm run prod",
     "https": "node src/server-https.js",
