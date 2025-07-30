@@ -6,14 +6,26 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "build": "npm run clean && npm run copy-files",
+    "clean": "rimraf dist",
+    "copy-files": "xcopy /E /I src dist\\src && copy package.json dist\\ && copy yarn.lock dist\\",
+    "prod": "set NODE_ENV=production && node dist/src/server.js",
+    "build:prod": "npm run build && npm run prod",
     "https": "node src/server-https.js",
     "dev-https": "nodemon src/server-https.js",
     "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
     "create-admin": "node src/scripts/createAdmin.js",
     "seed-legal-news": "node src/scripts/seedLegalNews.js",
     "reset-legal-news": "node src/scripts/resetLegalNews.js",
     "check-tables": "node src/scripts/checkAndCreateTables.js",
-    "create-video-tables": "node src/scripts/createVideoTables.js"
+    "create-video-tables": "node src/scripts/createVideoTables.js",
+    "setup": "npm run check-tables && npm run create-admin",
+    "docker:build": "docker build -t vilaw-be .",
+    "docker:run": "docker run -p 4000:4000 vilaw-be"
   },
   "keywords": [
     "nodejs",
@@ -44,6 +56,12 @@
   "devDependencies": {
     "jest": "^29.7.0",
     "nodemon": "^3.0.2",
-    "supertest": "^6.3.3"
+    "supertest": "^6.3.3",
+    "eslint": "^8.57.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "rimraf": "^5.0.5"
   }
 }
