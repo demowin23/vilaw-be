@@ -457,10 +457,8 @@ const deleteVideoLifeLaw = async (req, res) => {
       }
     }
 
-    await pool.query(
-      "UPDATE video_life_law SET is_active = false, ts_update = CURRENT_TIMESTAMP WHERE id = $1",
-      [id]
-    );
+    // Hard delete - xóa hoàn toàn khỏi database
+    await pool.query("DELETE FROM video_life_law WHERE id = $1", [id]);
 
     res.json({ success: true, message: "Xóa video thành công" });
   } catch (error) {

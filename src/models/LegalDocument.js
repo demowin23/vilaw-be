@@ -361,7 +361,7 @@ class LegalDocument {
   }
 
   // Xóa văn bản pháp luật (soft delete)
-  static async delete(id) {
+  static async softDelete(id) {
     const query = `
       UPDATE legal_documents 
       SET is_active = false, ts_update = CURRENT_TIMESTAMP
@@ -371,6 +371,17 @@ class LegalDocument {
 
     const result = await pool.query(query, [id]);
     return result.rows[0] || null;
+  }
+
+  // Xóa văn bản pháp luật (hard delete - xóa hoàn toàn)
+  static async delete(id) {
+    const query = `
+      DELETE FROM legal_documents 
+      WHERE id = $1
+    `;
+
+    const result = await pool.query(query, [id]);
+    return result.rowCount > 0;
   }
 
   // Tăng số lượt download

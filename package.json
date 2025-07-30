@@ -23,6 +23,7 @@
     "reset-legal-news": "node src/scripts/resetLegalNews.js",
     "check-tables": "node src/scripts/checkAndCreateTables.js",
     "create-video-tables": "node src/scripts/createVideoTables.js",
+    "hard-delete": "node src/scripts/hardDeleteInactive.js",
     "setup": "npm run check-tables && npm run create-admin",
     "docker:build": "docker build -t vilaw-be .",
     "docker:run": "docker run -p 4000:4000 vilaw-be"

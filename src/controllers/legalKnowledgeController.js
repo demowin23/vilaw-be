@@ -432,11 +432,10 @@ const deleteLegalKnowledge = async (req, res) => {
       });
     }
 
+    // Hard delete - xóa hoàn toàn khỏi database
     const query = `
-      UPDATE legal_knowledge 
-      SET is_active = false, ts_update = CURRENT_TIMESTAMP
+      DELETE FROM legal_knowledge 
       WHERE id = $1
-      RETURNING *
     `;
 
     await pool.query(query, [id]);
