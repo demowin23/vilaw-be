@@ -199,11 +199,13 @@ const getLegalKnowledgeById = async (req, res) => {
 // Tạo kiến thức pháp luật mới
 const createLegalKnowledge = async (req, res) => {
   try {
-    // Nếu có file ảnh, lấy đường dẫn file
+    // Xử lý image - ưu tiên file upload mới
     let imageUrl = null;
     if (req.file) {
+      // Nếu có file upload mới, sử dụng tên file mới
       imageUrl = `/uploads/${req.file.filename}`;
-    } else if (req.body.image) {
+    } else if (req.body.image !== undefined) {
+      // Nếu không có file upload nhưng có giá trị image trong body
       imageUrl = req.body.image;
     }
     const {
@@ -296,16 +298,19 @@ const createLegalKnowledge = async (req, res) => {
 const updateLegalKnowledge = async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      title,
-      image,
-      summary,
-      content,
-      category,
-      author,
-      status,
-      is_featured,
-    } = req.body;
+    const { title, summary, content, category, author, status, is_featured } =
+      req.body;
+
+    // Xử lý image - ưu tiên file upload mới
+    let imageUrl = undefined;
+    if (req.file) {
+      // Nếu có file upload mới, sử dụng tên file mới
+      imageUrl = `/uploads/${req.file.filename}`;
+    } else if (req.body.image !== undefined) {
+      // Nếu không có file upload nhưng có giá trị image trong body
+      // Chỉ cập nhật nếu giá trị khác undefined (có thể là null để xóa ảnh)
+      imageUrl = req.body.image;
+    }
 
     const checkQuery =
       "SELECT * FROM legal_knowledge WHERE id = $1 AND is_active = true";
@@ -366,9 +371,9 @@ const updateLegalKnowledge = async (req, res) => {
       paramIndex++;
     }
 
-    if (image !== undefined) {
+    if (imageUrl !== undefined) {
       updateFields.push(`image = $${paramIndex}`);
-      values.push(image);
+      values.push(imageUrl);
       paramIndex++;
     }
 
