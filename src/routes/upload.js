@@ -14,7 +14,13 @@ const storage = multer.diskStorage({
     cb(null, basename + "-" + Date.now() + ext);
   },
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 300 * 1024 * 1024,
+    fieldSize: 300 * 1024 * 1024,
+  },
+});
 
 // API upload 1 file ảnh
 router.post("/image", upload.single("file"), (req, res) => {
