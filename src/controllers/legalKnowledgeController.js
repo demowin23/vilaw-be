@@ -214,7 +214,7 @@ const createLegalKnowledge = async (req, res) => {
       content,
       category,
       author,
-      status = "draft",
+      status = "published",
       is_featured = false,
     } = req.body;
 
