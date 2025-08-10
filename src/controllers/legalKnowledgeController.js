@@ -157,7 +157,7 @@ const getLegalKnowledgeById = async (req, res) => {
         u.full_name as created_by_name
       FROM legal_knowledge lk
       LEFT JOIN users u ON lk.created_by = u.id
-      WHERE lk.id = $1 AND lk.is_active = true
+      WHERE lk.id = $1
     `;
 
     const result = await pool.query(query, [id]);
@@ -214,7 +214,7 @@ const createLegalKnowledge = async (req, res) => {
       content,
       category,
       author,
-      status = "draft",
+      status = "published",
       is_featured = false,
     } = req.body;
 
@@ -225,19 +225,9 @@ const createLegalKnowledge = async (req, res) => {
       });
     }
 
-    // Danh mục hợp lệ (bạn sửa lại đúng danh mục project của bạn)
-    const validCategories = [
-      "hinh_su",
-      "dan_su",
-      "dat_dai",
-      "hanh_chinh",
-      "kinh_te",
-      "lao_dong",
-      "thuong_mai",
-      "doanh_nghiep",
-      "hon_nhan_gia_dinh",
-      "hinh_su_tre_em",
-    ];
+    // Lấy danh sách category từ DB
+    const categories = await Category.getAll();
+    const validCategories = categories.map(cat => cat.value);
 
     if (!validCategories.includes(category)) {
       return res.status(400).json({
@@ -313,7 +303,7 @@ const updateLegalKnowledge = async (req, res) => {
     }
 
     const checkQuery =
-      "SELECT * FROM legal_knowledge WHERE id = $1 AND is_active = true";
+      "SELECT * FROM legal_knowledge WHERE id = $1";
     const checkResult = await pool.query(checkQuery, [id]);
 
     if (checkResult.rows.length === 0) {
@@ -343,15 +333,9 @@ const updateLegalKnowledge = async (req, res) => {
     }
 
     if (category) {
-      const validCategories = [
-        "dan_su_thua_ke_hon_nhan_gia_dinh",
-        "hinh_su",
-        "giai_quyet_tranh_chap",
-        "kinh_doanh_thuong_mai",
-        "lao_dong",
-        "dat_dai",
-        "khac",
-      ];
+      // Lấy danh sách category từ DB
+      const categories = await Category.getAll();
+      const validCategories = categories.map(cat => cat.value);
 
       if (!validCategories.includes(category)) {
         return res.status(400).json({
@@ -445,7 +429,7 @@ const deleteLegalKnowledge = async (req, res) => {
     const { id } = req.params;
 
     const checkQuery =
-      "SELECT * FROM legal_knowledge WHERE id = $1 AND is_active = true";
+      "SELECT * FROM legal_knowledge WHERE id = $1";
     const checkResult = await pool.query(checkQuery, [id]);
 
     if (checkResult.rows.length === 0) {
@@ -528,7 +512,7 @@ const approveLegalKnowledge = async (req, res) => {
 
     // Kiểm tra kiến thức tồn tại
     const checkQuery =
-      "SELECT * FROM legal_knowledge WHERE id = $1 AND is_active = true";
+      "SELECT * FROM legal_knowledge WHERE id = $1";
     const checkResult = await pool.query(checkQuery, [id]);
     if (checkResult.rows.length === 0) {
       return res.status(404).json({
@@ -541,7 +525,7 @@ const approveLegalKnowledge = async (req, res) => {
     const updateQuery = `
       UPDATE legal_knowledge 
       SET is_approved = $1, ts_update = CURRENT_TIMESTAMP
-      WHERE id = $2 AND is_active = true
+      WHERE id = $2
       RETURNING *
     `;
     const result = await pool.query(updateQuery, [is_approved, id]);
@@ -573,8 +557,7 @@ const getFeaturedLegalKnowledge = async (req, res) => {
         u.full_name as created_by_name
       FROM legal_knowledge lk
       LEFT JOIN users u ON lk.created_by = u.id
-      WHERE lk.is_active = true 
-        AND lk.is_approved = true 
+      WHERE lk.is_approved = true 
         AND lk.is_featured = true
     `;
 
@@ -591,8 +574,7 @@ const getFeaturedLegalKnowledge = async (req, res) => {
     let countQuery = `
       SELECT COUNT(*) as count 
       FROM legal_knowledge 
-      WHERE is_active = true 
-        AND is_approved = true 
+      WHERE is_approved = true 
         AND is_featured = true
     `;
     const countParams = [];
@@ -660,7 +642,7 @@ const getPendingLegalKnowledge = async (req, res) => {
         u.full_name as created_by_name
       FROM legal_knowledge lk
       LEFT JOIN users u ON lk.created_by = u.id
-      WHERE lk.is_active = true AND lk.is_approved = false
+      WHERE lk.is_approved = false
     `;
 
     const params = [];
@@ -689,7 +671,7 @@ const getPendingLegalKnowledge = async (req, res) => {
     }
 
     // Đếm tổng số bản ghi
-    let countQuery = `SELECT COUNT(*) as count FROM legal_knowledge WHERE is_active = true AND is_approved = false`;
+    let countQuery = `SELECT COUNT(*) as count FROM legal_knowledge WHERE is_approved = false`;
     const countParams = [];
     let countParamIndex = 1;
     if (category) {

@@ -157,7 +157,7 @@ const initDatabase = async () => {
         title VARCHAR(300) NOT NULL,
         image VARCHAR(500),
         summary TEXT,
-        category VARCHAR(50) NOT NULL CHECK (category IN ('dan_su_thua_ke_hon_nhan_gia_dinh', 'hinh_su', 'giai_quyet_tranh_chap', 'kinh_doanh_thuong_mai', 'lao_dong', 'dat_dai', 'khac')),
+        category VARCHAR(50) NOT NULL,
         author VARCHAR(100) NOT NULL,
         status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
         view_count INTEGER DEFAULT 0,
