@@ -129,7 +129,9 @@ const addDocumentStyling = (htmlContent) => {
   line-height: 1.15;
   font-family: 'Times New Roman', serif;
 }
-
+.legal-document thead p {
+  text-align: center;
+}
 /* List styles giống Word */
 .legal-document ul, .legal-document ol {
   margin: 6pt 0;
