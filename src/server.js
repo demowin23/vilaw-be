@@ -19,6 +19,7 @@ const legalDocument = require("./routes/legalDocument");
 const legalField = require("./routes/legalField");
 const chat = require("./routes/chat");
 const stats = require("./routes/stats");
+const siteContent = require("./routes/siteContent");
 const path = require("path");
 const fs = require("fs");
 const app = express();
@@ -54,6 +55,7 @@ app.use("/api/v1/chat", chat);
 app.use("/api/v1/stats", stats);
 app.use("/api/v1/uploads", upload);
 app.use("/api/v1/category", category);
+app.use("/api/v1/site-content", siteContent);
 app.use("/uploads", express.static(path.join(__dirname, "..", uploadPath)));
 
 // Routes
@@ -106,6 +108,9 @@ app.listen(PORT, "0.0.0.0", () => {
   );
   console.log(
     `🏷️ Legal Fields endpoints: http://localhost:${PORT}/api/v1/legal-fields`
+  );
+  console.log(
+    `🌐 Site Content endpoints: http://localhost:${PORT}/api/v1/site-content`
   );
 });
 

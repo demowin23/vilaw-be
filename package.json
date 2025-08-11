@@ -13,7 +13,7 @@
     "build:prod": "npm run build && npm run prod",
     "https": "node src/server-https.js",
     "dev-https": "nodemon src/server-https.js",
-    "test": "jest",
+    "test": "echo \"Error: no test specified\" && exit 1",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint src/",
@@ -28,7 +28,9 @@
     "fix-status": "node src/scripts/fixLegalDocumentsStatus.js",
     "setup": "npm run create-database && npm run check-tables && npm run create-admin",
     "docker:build": "docker build -t vilaw-be .",
-    "docker:run": "docker run -p 4000:4000 vilaw-be"
+    "docker:run": "docker run -p 4000:4000 vilaw-be",
+    "create-site-content-table": "node src/scripts/createSiteContentTable.js",
+    "cleanup-files": "node src/scripts/cleanupMissingFiles.js"
   },
   "keywords": [
     "nodejs",

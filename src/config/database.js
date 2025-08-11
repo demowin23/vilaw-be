@@ -309,6 +309,14 @@ const initDatabase = async () => {
 
     await createIndexes();
 
+    // Tạo bảng site_content nếu chưa tồn tại
+    try {
+      const { createSiteContentTable } = require('../scripts/createSiteContentTable');
+      await createSiteContentTable();
+    } catch (error) {
+      console.log("⚠️ Warning creating site_content table:", error.message);
+    }
+
     client.release();
   } catch (error) {
     console.error("❌ Error creating database tables:", error);

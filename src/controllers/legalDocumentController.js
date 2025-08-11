@@ -684,18 +684,43 @@ const downloadLegalDocument = async (req, res) => {
       });
     }
 
+    // Kiểm tra file có tồn tại không
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Lấy tên file từ file_url
+    const fileName = document.file_url.split("/").pop();
+    const filePath = path.join(__dirname, '..', '..', 'uploads', 'legal-documents', fileName);
+    
+    // Kiểm tra file có tồn tại không
+    if (!fs.existsSync(filePath)) {
+      console.error(`File không tồn tại: ${filePath}`);
+      
+      // Cập nhật database để đánh dấu file không tồn tại
+      try {
+        await LegalDocument.update(id, { 
+          file_url: null, 
+          file_size: null
+        });
+      } catch (updateError) {
+        console.error('Lỗi khi cập nhật trạng thái file:', updateError);
+      }
+      
+      return res.status(404).json({
+        success: false,
+        error: "File không tồn tại hoặc đã bị xóa",
+        message: "Vui lòng liên hệ admin để khôi phục file"
+      });
+    }
+
     // Tăng số lượt download
     await LegalDocument.incrementDownloadCount(id);
 
     // Trả về file để download
-    const filePath = `./uploads/${document.file_url.split("/").pop()}`;
     res.download(filePath, document.title + ".docx", (err) => {
       if (err) {
         console.error("Error downloading file:", err);
-        res.status(500).json({
-          success: false,
-          error: "Lỗi khi tải file",
-        });
+        // Không gửi response ở đây vì res.download đã gửi file
       }
     });
   } catch (error) {
