@@ -55,6 +55,7 @@ const {
   getDetailedChatStats,
   debugConversations,
   addParticipant,
+  downloadFile,
 } = require("../controllers/chatController");
 
 // Tất cả routes đều cần authentication
@@ -102,5 +103,8 @@ router.get("/debug", debugConversations);
 
 // Thêm participant vào conversation
 router.post("/conversations/:conversationId/join", addParticipant);
+
+// Download file từ tin nhắn chat
+router.get("/download/:filename", downloadFile);
 
 module.exports = router;

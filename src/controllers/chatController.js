@@ -1,5 +1,7 @@
 const { pool } = require("../config/database");
 const Chat = require("../models/Chat");
+const fs = require("fs");
+const path = require("path");
 
 // Lấy danh sách cuộc trò chuyện
 const getConversations = async (req, res) => {
@@ -109,10 +111,11 @@ const sendMessage = async (req, res) => {
     const { conversationId } = req.params;
     const { content, messageType = "text" } = req.body;
 
-    if (!content) {
+    // Kiểm tra: nếu không có file thì content là bắt buộc
+    if (!req.file && !content) {
       return res.status(400).json({
         success: false,
-        error: "Nội dung tin nhắn là bắt buộc",
+        error: "Nội dung tin nhắn hoặc file là bắt buộc",
       });
     }
 
@@ -166,10 +169,13 @@ const sendMessage = async (req, res) => {
       fileUrl = `/uploads/chat/${req.file.filename}`;
     }
 
+    // Nếu chỉ gửi file mà không có content, sử dụng tên file làm content
+    const messageContent = content || (req.file ? req.file.originalname : "");
+    
     const message = await Chat.sendMessage(
       conversationId,
       userId,
-      content,
+      messageContent,
       messageType,
       fileUrl
     );
@@ -582,6 +588,51 @@ const debugConversations = async (req, res) => {
   }
 };
 
+// Download file từ tin nhắn chat
+const downloadFile = async (req, res) => {
+  try {
+    const { filename } = req.params;
+    
+    // Kiểm tra filename có hợp lệ không
+    if (!filename || filename.includes('..') || filename.includes('/')) {
+      return res.status(400).json({
+        success: false,
+        error: "Tên file không hợp lệ",
+      });
+    }
+
+    const filePath = path.join(__dirname, "../../uploads/chat", filename);
+    
+    // Kiểm tra file có tồn tại không
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: "File không tồn tại",
+      });
+    }
+
+    // Lấy thông tin file
+    const stats = fs.statSync(filePath);
+    const fileSize = stats.size;
+    
+    // Set headers cho download
+    res.setHeader('Content-Length', fileSize);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    
+    // Stream file về client
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+    
+  } catch (error) {
+    console.error("Error downloading file:", error);
+    res.status(500).json({
+      success: false,
+      error: "Lỗi khi tải file",
+    });
+  }
+};
+
 module.exports = {
   getConversations,
   getMessages,
@@ -596,4 +647,5 @@ module.exports = {
   getDetailedChatStats,
   debugConversations,
   addParticipant,
+  downloadFile,
 };
