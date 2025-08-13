@@ -549,6 +549,18 @@ const updateLegalDocument = async (req, res) => {
     let fileUrl = existingDoc.file_url;
     let fileSize = existingDoc.file_size;
     if (req.file) {
+      // Xóa file cũ nếu có
+      if (existingDoc.file_url) {
+        try {
+          const oldFileName = existingDoc.file_url.split("/").pop();
+          const oldFilePath = path.join(__dirname, '..', '..', 'uploads', oldFileName);
+          if (fs.existsSync(oldFilePath)) {
+            fs.unlinkSync(oldFilePath);
+          }
+        } catch (fileError) {
+        }
+      }
+      
       fileUrl = `/uploads/${req.file.filename}`;
       fileSize = req.file.size;
     }
@@ -651,6 +663,18 @@ const deleteLegalDocument = async (req, res) => {
       });
     }
 
+    // Xóa file vật lý nếu có
+    if (existingDoc.file_url) {
+      try {
+        const fileName = existingDoc.file_url.split("/").pop();
+        const filePath = path.join(__dirname, '..', '..', 'uploads', fileName);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (fileError) {
+      }
+    }
+
     await LegalDocument.delete(id);
 
     res.json({
@@ -692,7 +716,7 @@ const downloadLegalDocument = async (req, res) => {
     
     // Lấy tên file từ file_url
     const fileName = document.file_url.split("/").pop();
-    const filePath = path.join(__dirname, '..', '..', 'uploads', 'legal-documents', fileName);
+    const filePath = path.join(__dirname, '..', '..', 'uploads', fileName);
     
     // Kiểm tra file có tồn tại không
     if (!fs.existsSync(filePath)) {
