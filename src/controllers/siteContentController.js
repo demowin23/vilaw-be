@@ -5,9 +5,6 @@ class SiteContentController {
   // GET /site-content - Lấy cả About và Contact content
   static async getAllContent(req, res) {
     try {
-      // Đảm bảo bảng tồn tại
-      await SiteContent.ensureTable();
-      
       const content = await SiteContent.getAll();
       
       res.json({
@@ -28,9 +25,6 @@ class SiteContentController {
   static async getContentByKey(req, res) {
     try {
       const { key } = req.params;
-      
-      // Đảm bảo bảng tồn tại
-      await SiteContent.ensureTable();
       
       const content = await SiteContent.getByKey(key);
       
@@ -61,9 +55,6 @@ class SiteContentController {
     try {
       const { ifVersion } = req.query;
       const updatedBy = req.user?.email || req.user?.phone || 'unknown';
-      
-      // Đảm bảo bảng tồn tại
-      await SiteContent.ensureTable();
       
       // Làm sạch dữ liệu đầu vào
       const sanitizedContent = sanitizeContent(req.body);
@@ -119,9 +110,6 @@ class SiteContentController {
     try {
       const { ifVersion } = req.query;
       const updatedBy = req.user?.email || req.user?.phone || 'unknown';
-      
-      // Đảm bảo bảng tồn tại
-      await SiteContent.ensureTable();
       
       // Làm sạch dữ liệu đầu vào
       const sanitizedContent = sanitizeContent(req.body);
