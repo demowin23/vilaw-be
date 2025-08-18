@@ -29,7 +29,7 @@
     "setup": "npm run create-database && npm run check-tables && npm run create-admin",
     "docker:build": "docker build -t vilaw-be .",
     "docker:run": "docker run -p 4000:4000 vilaw-be",
-    "create-site-content-table": "node src/scripts/createSiteContentTable.js",
+
     "cleanup-files": "node src/scripts/cleanupMissingFiles.js"
   },
   "keywords": [

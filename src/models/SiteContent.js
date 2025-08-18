@@ -128,19 +128,7 @@ class SiteContent {
     }
   }
 
-  // Đảm bảo bảng tồn tại
-  static async ensureTable() {
-    try {
-      const exists = await this.tableExists();
-      if (!exists) {
-        const { createSiteContentTable } = require('../scripts/createSiteContentTable');
-        await createSiteContentTable();
-      }
-    } catch (error) {
-      console.error('Lỗi khi đảm bảo bảng site_content:', error);
-      throw error;
-    }
-  }
+
 }
 
 module.exports = SiteContent;

@@ -2,7 +2,24 @@
 
 ## 📋 Tổng quan
 
-API quản lý văn bản pháp luật cho hệ thống Vilaw. Hệ thống cho phép tạo, đọc, cập nhật, xóa và tìm kiếm các văn bản pháp luật với hỗ trợ upload file Word. **Trạng thái văn bản được tính toán tự động dựa trên ngày tháng.**
+API quản lý văn bản pháp luật cho hệ thống Vilaw. Hệ thống cho phép tạo, đọc, cập nhật, xóa và tìm kiếm các văn bản pháp luật với hỗ trợ upload file Word và lưu trữ nội dung HTML. **Trạng thái văn bản được tính toán tự động dựa trên ngày tháng.**
+
+**Tính năng mới:** Hỗ trợ lưu trữ nội dung HTML trực tiếp trong database thay vì chỉ dựa vào việc chuyển đổi từ file Word.
+
+## 🆕 Tính năng HTML Content
+
+### Lưu trữ HTML Content
+- **Trường mới:** `html_content` - Lưu trữ nội dung HTML của văn bản pháp luật
+- **Ưu điểm:** 
+  - Không cần chuyển đổi file Word mỗi lần đọc
+  - Tốc độ truy xuất nhanh hơn
+  - Hỗ trợ chỉnh sửa nội dung HTML trực tiếp
+  - Fallback về chuyển đổi file Word nếu không có HTML content
+
+### Cách sử dụng
+1. **Tạo mới:** Truyền `html_content` trong request body để lưu nội dung HTML
+2. **Cập nhật:** Có thể cập nhật `html_content` thông qua API update
+3. **Đọc:** API sẽ ưu tiên trả về `html_content` từ database, nếu không có sẽ chuyển đổi từ file Word
 
 ## 🗄️ Cấu trúc Database
 
@@ -24,6 +41,7 @@ CREATE TABLE legal_documents (
     uploaded_by INTEGER REFERENCES users(id),
     is_important BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
+    html_content TEXT,
     ts_create TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ts_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
@@ -137,6 +155,7 @@ Trạng thái văn bản được tính toán tự động dựa trên 3 mốc t
     "uploaded_by_name": "Nguyễn Văn A",
     "is_important": true,
     "is_active": true,
+    "html_content": "<div class='legal-document'><h1>Luật Dân sự số 91/2015/QH13</h1><p>Nội dung văn bản...</p></div>",
     "ts_create": "2024-01-15T10:30:00Z",
     "ts_update": "2024-01-15T10:30:00Z"
   }
@@ -166,6 +185,7 @@ Content-Type: multipart/form-data
 - `tags` (optional): Tags phân cách bằng dấu phẩy
 - `is_important` (optional): Văn bản quan trọng (true/false)
 - `file` (optional): File Word (.doc, .docx) - tối đa 10MB
+- `html_content` (optional): Nội dung HTML của văn bản pháp luật
 
 **Lưu ý:**
 
@@ -197,6 +217,7 @@ Content-Type: multipart/form-data
     "uploaded_by": 1,
     "is_important": true,
     "is_active": true,
+    "html_content": "<div class='legal-document'><h1>Luật Dân sự số 91/2015/QH13</h1><p>Nội dung văn bản...</p></div>",
     "ts_create": "2024-01-15T10:30:00Z",
     "ts_update": "2024-01-15T10:30:00Z"
   }
@@ -214,7 +235,7 @@ Authorization: Bearer <token>
 Content-Type: multipart/form-data
 ```
 
-**Body (Form Data):** Tương tự như tạo mới, tất cả trường đều optional
+**Body (Form Data):** Tương tự như tạo mới, tất cả trường đều optional (bao gồm `html_content`)
 
 **Lưu ý:** Trạng thái (`status`) được tính toán tự động dựa trên ngày tháng, không cần truyền trong request.
 

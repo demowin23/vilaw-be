@@ -300,6 +300,7 @@ class LegalDocument {
       uploaded_by,
       is_important = false,
       is_approved = false,
+      html_content,
     } = documentData;
 
     // Tính toán status dựa trên ngày hiệu lực và hết hạn
@@ -312,8 +313,8 @@ class LegalDocument {
     const query = `
       INSERT INTO legal_documents (
         title, document_number, document_type, issuing_authority,
-        issued_date, effective_date, expiry_date, status, tags, file_url, file_size, uploaded_by, is_important, is_approved
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        issued_date, effective_date, expiry_date, status, tags, file_url, file_size, uploaded_by, is_important, is_approved, html_content
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *
     `;
 
@@ -332,6 +333,7 @@ class LegalDocument {
       uploaded_by,
       is_important,
       is_approved,
+      html_content || null,
     ];
 
     const result = await pool.query(query, values);

@@ -58,171 +58,7 @@ const generateTableOfContents = (htmlContent) => {
   }
 };
 
-// Function thêm CSS styling cho HTML content giống Word
-const addDocumentStyling = (htmlContent) => {
-  const css = `
-<style>
-/* Reset và base styles giống Word */
-.legal-document {
-  font-family: 'Times New Roman', 'Cambria', serif;
-  font-size: 12pt;
-  line-height: 1.15;
-  color: #000000;
-  max-width: 8.5in;
-  margin: 0 auto;
-  padding: 1in;
-  background: #ffffff;
-  text-align: justify;
-}
 
-/* Heading styles giống Word */
-.legal-document h1 {
-  font-size: 16pt;
-  font-weight: bold;
-  text-align: center;
-  margin: 12pt 0 6pt 0;
-  text-transform: uppercase;
-  font-family: 'Times New Roman', serif;
-}
-
-.legal-document h2 {
-  font-size: 14pt;
-  font-weight: bold;
-  margin: 12pt 0 6pt 0;
-  text-transform: uppercase;
-  font-family: 'Times New Roman', serif;
-}
-
-.legal-document h3 {
-  font-size: 13pt;
-  font-weight: bold;
-  margin: 12pt 0 6pt 0;
-  font-family: 'Times New Roman', serif;
-}
-
-.legal-document h4 {
-  font-size: 12pt;
-  font-weight: bold;
-  margin: 12pt 0 6pt 0;
-  font-family: 'Times New Roman', serif;
-}
-
-.legal-document h5 {
-  font-size: 11pt;
-  font-weight: bold;
-  margin: 12pt 0 6pt 0;
-  font-family: 'Times New Roman', serif;
-}
-
-.legal-document h6 {
-  font-size: 10pt;
-  font-weight: bold;
-  margin: 12pt 0 6pt 0;
-  font-family: 'Times New Roman', serif;
-}
-
-/* Paragraph styles giống Word */
-.legal-document p {
-  margin: 0 0 6pt 0;
-  text-align: justify;
-  text-indent: 0.5in;
-  line-height: 1.15;
-  font-family: 'Times New Roman', serif;
-}
-.legal-document thead p {
-  text-align: center;
-}
-/* List styles giống Word */
-.legal-document ul, .legal-document ol {
-  margin: 6pt 0;
-  padding-left: 0.5in;
-  line-height: 1.15;
-}
-
-.legal-document li {
-  margin: 3pt 0;
-  line-height: 1.15;
-  font-family: 'Times New Roman', serif;
-}
-
-/* Table styles giống Word */
-.legal-document table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 12pt 0;
-  font-size: 11pt;
-  font-family: 'Times New Roman', serif;
-}
-
-.legal-document th, .legal-document td {
-  border: 0.5pt solid #000000;
-  padding: 6pt;
-  text-align: left;
-  vertical-align: top;
-  line-height: 1.15;
-}
-
-.legal-document th {
-  background-color: #f0f0f0;
-  font-weight: bold;
-}
-
-/* Special Word-like formatting */
-.legal-document .page-break {
-  page-break-before: always;
-}
-
-.legal-document .no-indent {
-  text-indent: 0;
-}
-
-.legal-document .center {
-  text-align: center;
-}
-
-.legal-document .bold {
-  font-weight: bold;
-}
-
-.legal-document .italic {
-  font-style: italic;
-}
-
-.legal-document .underline {
-  text-decoration: underline;
-}
-
-/* Print styles */
-@media print {
-  .legal-document {
-    max-width: none;
-    margin: 0;
-    padding: 0.5in;
-  }
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-  .legal-document {
-    font-size: 11pt;
-    padding: 0.5in;
-    max-width: 100%;
-  }
-  
-  .legal-document h1 {
-    font-size: 14pt;
-  }
-  
-  .legal-document h2 {
-    font-size: 13pt;
-  }
-}
-</style>
-  `;
-
-  // Wrap content in a div with legal-document class
-  return `<div class="legal-document">${css}${htmlContent}</div>`;
-};
 
 // Lấy danh sách văn bản pháp luật
 const getLegalDocuments = async (req, res) => {
@@ -313,8 +149,20 @@ const getLegalDocumentById = async (req, res) => {
       });
     }
 
-    // Chuyển đổi file thành HTML nếu có file
-    if (document.file_url) {
+    // Sử dụng html_content trực tiếp từ database
+    if (document.html_content) {
+      try {
+        // Tạo mục lục từ HTML content có sẵn trong database
+        const tocResult = generateTableOfContents(document.html_content);
+        document.html_toc = tocResult.headings;
+        document.html_source = 'database';
+      } catch (error) {
+        console.error("Error processing HTML content from database:", error);
+        document.html_toc = null;
+        document.html_source = 'database_error';
+      }
+    } else if (document.file_url) {
+      // Fallback: Chuyển đổi file thành HTML nếu không có html_content trong database
       try {
         const filePath = path.join(
           __dirname,
@@ -334,34 +182,36 @@ const getLegalDocumentById = async (req, res) => {
             // Tạo mục lục và thêm ID vào headings
             const tocResult = generateTableOfContents(result.value);
 
-            // Thêm styling cho HTML content giống Word
-            document.html_content = addDocumentStyling(tocResult.modifiedHtml);
-            document.html_toc = tocResult.headings; // Chỉ trả về dữ liệu mục lục
+            // Lưu HTML content từ file conversion
+            document.html_content = tocResult.modifiedHtml;
+            document.html_toc = tocResult.headings;
+            document.html_source = 'file_conversion';
           } else if (fileExtension === ".doc") {
             // File .doc không được hỗ trợ bởi mammoth
             document.html_content = null;
-            document.html_error =
-              "File .doc không được hỗ trợ. Vui lòng chuyển đổi thành .docx";
             document.html_toc = null;
+            document.html_source = 'file_unsupported';
           } else {
             document.html_content = null;
-            document.html_error = "Định dạng file không được hỗ trợ";
             document.html_toc = null;
+            document.html_source = 'file_unsupported';
           }
         } else {
           document.html_content = null;
-          document.html_error = "File không tồn tại";
           document.html_toc = null;
+          document.html_source = 'file_not_found';
         }
       } catch (error) {
         console.error("Error converting to HTML:", error);
         document.html_content = null;
-        document.html_error = "Lỗi khi chuyển đổi file: " + error.message;
         document.html_toc = null;
+        document.html_source = 'file_conversion_error';
       }
     } else {
+      // Không có html_content và không có file
       document.html_content = null;
       document.html_toc = null;
+      document.html_source = 'none';
     }
 
     res.json({
@@ -390,6 +240,7 @@ const createLegalDocument = async (req, res) => {
       expiry_date,
       tags,
       is_important = false,
+      html_content,
     } = req.body;
 
     // Validation
@@ -476,6 +327,7 @@ const createLegalDocument = async (req, res) => {
       uploaded_by: req.user.id,
       is_important,
       is_approved: isApproved,
+      html_content: html_content || null,
     };
 
     const newDocument = await LegalDocument.create(documentData);
@@ -509,6 +361,7 @@ const updateLegalDocument = async (req, res) => {
       status,
       tags,
       is_important,
+      html_content,
     } = req.body;
 
     // Kiểm tra văn bản tồn tại
@@ -612,6 +465,7 @@ const updateLegalDocument = async (req, res) => {
       file_url: fileUrl,
       file_size: fileSize,
       is_important,
+      html_content,
     };
 
     // Loại bỏ các trường undefined

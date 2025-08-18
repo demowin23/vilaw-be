@@ -190,6 +190,7 @@ const initDatabase = async () => {
         uploaded_by INTEGER REFERENCES users(id),
         is_important BOOLEAN DEFAULT false,
         is_active BOOLEAN DEFAULT true,
+        html_content TEXT,
         ts_create TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         ts_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -309,13 +310,7 @@ const initDatabase = async () => {
 
     await createIndexes();
 
-    // Tạo bảng site_content nếu chưa tồn tại
-    try {
-      const { createSiteContentTable } = require('../scripts/createSiteContentTable');
-      await createSiteContentTable();
-    } catch (error) {
-      console.log("⚠️ Warning creating site_content table:", error.message);
-    }
+
 
     client.release();
   } catch (error) {
