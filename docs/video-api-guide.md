@@ -19,6 +19,7 @@ API Video đã được cập nhật với các tính năng mới:
 - video: VARCHAR(500) NOT NULL
 - description: TEXT
 - thumbnail: VARCHAR(500)
+- img: VARCHAR(500)                    -- MỚI: Ảnh bổ sung
 - duration: INTEGER DEFAULT 0
 - view_count: INTEGER DEFAULT 0
 - like_count: INTEGER DEFAULT 0
@@ -121,7 +122,8 @@ Authorization: Bearer <token>
   "age_group": "all",
   "hashtags": "phap_luat,dan_su,thua_ke",
   "video": [file],
-  "thumbnail": [file]
+  "thumbnail": [file],
+  "img": [file]
 }
 ```
 
@@ -129,6 +131,12 @@ Authorization: Bearer <token>
 
 - String: `"phap_luat,dan_su,thua_ke"`
 - Array: `["phap_luat", "dan_su", "thua_ke"]`
+
+**Files có thể upload:**
+
+- `video`: File video (mp4, avi, mov, wmv, flv, webm) - Bắt buộc
+- `thumbnail`: File ảnh thumbnail (jpeg, jpg, png, gif, webp) - Tùy chọn
+- `img`: File ảnh bổ sung (jpeg, jpg, png, gif, webp) - Tùy chọn
 
 ### 3. Like/Dislike video (MỚI)
 
@@ -313,10 +321,11 @@ fetch("/api/v1/video-life-law/1/comments", {
 Nếu bạn đã có database cũ, chạy các lệnh SQL sau:
 
 ```sql
--- Thêm cột dislike_count và hashtags vào bảng video_life_law
+-- Thêm cột dislike_count, hashtags và img vào bảng video_life_law
 ALTER TABLE video_life_law
 ADD COLUMN IF NOT EXISTS dislike_count INTEGER DEFAULT 0,
-ADD COLUMN IF NOT EXISTS hashtags TEXT[];
+ADD COLUMN IF NOT EXISTS hashtags TEXT[],
+ADD COLUMN IF NOT EXISTS img VARCHAR(500);
 
 -- Tạo bảng video_likes
 CREATE TABLE IF NOT EXISTS video_likes (

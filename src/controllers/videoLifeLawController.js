@@ -235,6 +235,7 @@ const createVideoLifeLaw = async (req, res) => {
   try {
     let videoUrl = null;
     let thumbnailUrl = null;
+    let imgUrl = null;
 
     if (req.files) {
       if (req.files.video) {
@@ -242,6 +243,9 @@ const createVideoLifeLaw = async (req, res) => {
       }
       if (req.files.thumbnail) {
         thumbnailUrl = `/uploads/${req.files.thumbnail[0].filename}`;
+      }
+      if (req.files.img) {
+        imgUrl = `/uploads/${req.files.img[0].filename}`;
       }
     }
 
@@ -286,8 +290,8 @@ const createVideoLifeLaw = async (req, res) => {
     const isApproved = req.user.role === "admin" ? true : false;
 
     const query = `
-      INSERT INTO video_life_law (type, title, video, description, thumbnail, duration, age_group, hashtags, created_by, is_approved)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      INSERT INTO video_life_law (type, title, video, description, thumbnail, img, duration, age_group, hashtags, created_by, is_approved)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
     `;
 
@@ -297,6 +301,7 @@ const createVideoLifeLaw = async (req, res) => {
       videoUrl,
       description || null,
       thumbnailUrl || null,
+      imgUrl || null,
       parseInt(duration) || 0,
       age_group,
       hashtagsArray.length > 0 ? hashtagsArray : null,
@@ -323,6 +328,7 @@ const updateVideoLifeLaw = async (req, res) => {
     const { id } = req.params;
     let videoUrl = null;
     let thumbnailUrl = null;
+    let imgUrl = null;
 
     if (req.files) {
       if (req.files.video) {
@@ -330,6 +336,9 @@ const updateVideoLifeLaw = async (req, res) => {
       }
       if (req.files.thumbnail) {
         thumbnailUrl = `/uploads/${req.files.thumbnail[0].filename}`;
+      }
+      if (req.files.img) {
+        imgUrl = `/uploads/${req.files.img[0].filename}`;
       }
     }
 
@@ -396,12 +405,13 @@ const updateVideoLifeLaw = async (req, res) => {
         video = COALESCE($3, video),
         description = COALESCE($4, description),
         thumbnail = COALESCE($5, thumbnail),
-        duration = COALESCE($6, duration),
-        age_group = COALESCE($7, age_group),
-        hashtags = COALESCE($8, hashtags),
-        is_featured = COALESCE($9, is_featured),
+        img = COALESCE($6, img),
+        duration = COALESCE($7, duration),
+        age_group = COALESCE($8, age_group),
+        hashtags = COALESCE($9, hashtags),
+        is_featured = COALESCE($10, is_featured),
         ts_update = CURRENT_TIMESTAMP
-      WHERE id = $10 AND is_active = true
+      WHERE id = $11 AND is_active = true
       RETURNING *
     `;
 
@@ -411,6 +421,7 @@ const updateVideoLifeLaw = async (req, res) => {
       videoUrl || null,
       description || null,
       thumbnailUrl || null,
+      imgUrl || null,
       duration ? parseInt(duration) : null,
       age_group || null,
       hashtagsArray,

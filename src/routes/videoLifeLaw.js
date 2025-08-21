@@ -36,7 +36,7 @@ const fileFilter = (req, file, cb) => {
         false
       );
     }
-  } else if (file.fieldname === "thumbnail") {
+  } else if (file.fieldname === "thumbnail" || file.fieldname === "img") {
     // Chấp nhận image files
     const allowedImageTypes = [
       "image/jpeg",
@@ -63,7 +63,7 @@ const upload = multer({
   fileFilter: fileFilter,
   limits: {
     fileSize: 100 * 1024 * 1024, // 100MB cho video
-    files: 2, // Tối đa 2 files (video + thumbnail)
+    files: 3, // Tối đa 3 files (video + thumbnail + img)
   },
 });
 
@@ -104,6 +104,7 @@ router.post(
   upload.fields([
     { name: "video", maxCount: 1 },
     { name: "thumbnail", maxCount: 1 },
+    { name: "img", maxCount: 1 },
   ]),
   createVideoLifeLaw
 );
@@ -114,6 +115,7 @@ router.put(
   upload.fields([
     { name: "video", maxCount: 1 },
     { name: "thumbnail", maxCount: 1 },
+    { name: "img", maxCount: 1 },
   ]),
   updateVideoLifeLaw
 );
@@ -145,7 +147,7 @@ router.use((error, req, res, next) => {
     if (error.code === "LIMIT_FILE_COUNT") {
       return res.status(400).json({
         success: false,
-        error: "Quá nhiều file. Tối đa 2 files (video + thumbnail)",
+        error: "Quá nhiều file. Tối đa 3 files (video + thumbnail + img)",
       });
     }
     return res.status(400).json({
